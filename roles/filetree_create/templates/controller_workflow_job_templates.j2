@@ -7,12 +7,12 @@ controller_workflows:
   - name: "{{ current_workflow_job_templates_asset_value.name }}"
 {% if template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].description
                              | default(template_overrides_global.workflow_template.description)
-                             | default(current_workflow_job_templates_asset_value.description) | regex_replace("'", "''") not in __empty_values %}
+                             | default(current_workflow_job_templates_asset_value.description) not in __empty_values %}
     description: |-
       {{ '{%- raw -%}' }}
       {{ template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].description
                              | default(template_overrides_global.workflow_template.description)
-                             | default(current_workflow_job_templates_asset_value.description) | regex_replace("'", "''") }}
+                             | default(current_workflow_job_templates_asset_value.description) | indent(6) }}
       {{ '{%- endraw -%}' }}
 {% endif %}
     organization: "{{ current_workflow_job_templates_asset_value.summary_fields.organization.name | default(organization if organization != 'ORGANIZATIONLESS' else 'ToDo: The WF \'' + current_workflow_job_templates_asset_value.name + '\' must belong to an organization') }}"
@@ -32,7 +32,6 @@ controller_workflows:
 {%   if node.summary_fields.inventory is defined %}
         inventory: "{{ node.summary_fields.inventory.name }}"
 {%   endif %}
-        workflow_job_template: "{{ node.summary_fields.workflow_job_template.name }}"
 {%   if node.summary_fields.unified_job_template is defined %}
 {%     if node.summary_fields.unified_job_template.unified_job_type == 'workflow_approval' %}
         approval_node:
@@ -41,6 +40,24 @@ controller_workflows:
           timeout: {{ node.summary_fields.unified_job_template.timeout }}
 {%     else %}
         unified_job_template: "{{ node.summary_fields.unified_job_template.name | default('ToDo: The node is pointing to a deleted Job Template') }}"
+        unified_job_type : "{{ node.summary_fields.unified_job_template.unified_job_type | default('ToDo: The node is pointing to a deleted Job Template') }}"
+{%       if node.summary_fields.unified_job_template.unified_job_type is match('job') %}
+{%         set org_var = query('ansible.platform.gateway_api', 'api/controller/v2/job_templates', query_params={'id': node.summary_fields.unified_job_template.id},
+                             host=aap_hostname, oauth_token=__filetree_create_oauth_token, verify_ssl=aap_validate_certs, return_all=true, max_objects=query_controller_api_max_objects) %}
+        lookup_organization: "{{ org_var[0].summary_fields.organization.name | default('') }}"
+{%       elif node.summary_fields.unified_job_template.unified_job_type is match('workflow_job') %}
+{%         set org_var = query('ansible.platform.gateway_api', 'api/controller/v2/workflow_job_templates', query_params={'id': node.summary_fields.unified_job_template.id},
+                             host=aap_hostname, oauth_token=__filetree_create_oauth_token, verify_ssl=aap_validate_certs, return_all=true, max_objects=query_controller_api_max_objects) %}
+        lookup_organization: "{{ org_var[0].summary_fields.organization.name | default('') }}"
+{%       elif node.summary_fields.unified_job_template.unified_job_type is match('project_update') %}
+{%         set org_var = query('ansible.platform.gateway_api', 'api/controller/v2/projects', query_params={'id': node.summary_fields.unified_job_template.id},
+                             host=aap_hostname, oauth_token=__filetree_create_oauth_token, verify_ssl=aap_validate_certs, return_all=true, max_objects=query_controller_api_max_objects) %}
+        lookup_organization: "{{ org_var[0].summary_fields.organization.name | default('') }}"
+{%       elif node.summary_fields.unified_job_template.unified_job_type is match('inventory_update') %}
+{%         set org_var = query('ansible.platform.gateway_api', 'api/controller/v2/inventory_sources', query_params={'id': node.summary_fields.unified_job_template.id},
+                            host=aap_hostname, oauth_token=__filetree_create_oauth_token, verify_ssl=aap_validate_certs, return_all=true, max_objects=query_controller_api_max_objects) %}
+        lookup_organization: "{{ org_var[0].summary_fields.organization.name | default('') }}"
+{%       endif %}
 {%       if node.verbosity != None %}
         verbosity: "{{ node.verbosity }}"
 {%       else %}
@@ -64,7 +81,6 @@ controller_workflows:
 {%   if node.job_type %}
         job_type: "{{ node.job_type }}"
 {%   endif %}
-        organization: "{{ current_workflow_job_templates_asset_value.summary_fields.organization.name | default(organization if organization != 'ORGANIZATIONLESS' else 'ToDo: The WF \'' + current_workflow_job_templates_asset_value.name + '\' must belong to an organization') }}"
         all_parents_must_converge: "{{ node.all_parents_must_converge }}"
 {%   if node.extra_data is defined and node.extra_data | length > 0 %}
         extra_data:
@@ -73,12 +89,12 @@ controller_workflows:
                                | default(node.extra_data) %}
 {%     for extra_data_item in (extra_data_contents | dict2items) if ((extra_data_item.value | string | length) > 0 and (extra_data_item.value | string) is not match('None')) %}
 {%       if extra_data_item.value | type_debug is match('list') %}
-          {{ extra_data_item.key }}:
+          {{ yamlval.render_scalar(extra_data_item.key) }}:
 {%         for current_list_item in extra_data_item.value if ((extra_data_item.value | string | length) > 0 and (extra_data_item.value | string) is not match('None')) %}
             - {{ yamlval.render_scalar(current_list_item) }}
 {%         endfor %}
 {%       else %}
-          {{ extra_data_item.key }}: {{ yamlval.render_scalar(extra_data_item.value) }}
+          {{ yamlval.render_scalar(extra_data_item.key) }}: {{ yamlval.render_scalar(extra_data_item.value) }}
 {%       endif %}
 {%     endfor %}
 {%   endif %}
@@ -115,6 +131,24 @@ controller_workflows:
     ask_variables_on_launch: "{{ template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].ask_variables_on_launch
                                  | default(template_overrides_global.workflow_template.ask_variables_on_launch)
                                  | default(current_workflow_job_templates_asset_value.ask_variables_on_launch) }}"
+    ask_tags_on_launch: {{ template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].ask_tags_on_launch
+                           | default(template_overrides_global.workflow_template.ask_tags_on_launch)
+                           | default(current_workflow_job_templates_asset_value.ask_tags_on_launch | bool | lower) }}
+    ask_skip_tags_on_launch: {{ template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].ask_skip_tags_on_launch
+                                | default(template_overrides_global.workflow_template.ask_skip_tags_on_launch)
+                                | default(current_workflow_job_templates_asset_value.ask_skip_tags_on_launch | bool | lower) }}
+    job_tags: "{{ template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].job_tags
+                  | default(template_overrides_global.workflow_template.job_tags)
+                  | default(current_workflow_job_templates_asset_value.job_tags) }}"
+    skip_tags: "{{ template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].skip_tags
+                   | default(template_overrides_global.workflow_template.skip_tags)
+                   | default(current_workflow_job_templates_asset_value.skip_tags) }}"
+    ask_labels_on_launch: "{{ template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].ask_labels_on_launch
+                   | default(template_overrides_global.workflow_template.ask_labels_on_launch)
+                   | default(current_workflow_job_templates_asset_value.ask_labels_on_launch) }}"
+    ask_scm_branch_on_launch: "{{ template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].ask_scm_branch_on_launch
+                   | default(template_overrides_global.workflow_template.ask_scm_branch_on_launch)
+                   | default(current_workflow_job_templates_asset_value.ask_scm_branch_on_launch) }}"
     allow_simultaneous: "{{ template_overrides_resources.workflow_job_template[current_workflow_job_templates_asset_value.name].allow_simultaneous
                             | default(template_overrides_global.workflow_template.allow_simultaneous)
                             | default(current_workflow_job_templates_asset_value.allow_simultaneous) }}"
@@ -153,15 +187,19 @@ controller_workflows:
 {%     if extra_vars_item.value == '' %}
       {{ extra_vars_item.key }}: {{ '"{%- raw -%}{%- endraw -%}"' }}
 {%     elif extra_vars_item.value | type_debug is match('list') %}
+{%       if (extra_vars_item.value | length) == 0 %}
+      {{ extra_vars_item.key }}: []
+{%       else %}
       {{ extra_vars_item.key }}:
-{%       for current_list_item in extra_vars_item.value if ((extra_vars_item.value | string | length) > 0 and (extra_vars_item.value | string) is not match('None')) %}
+{%         for current_list_item in extra_vars_item.value if ((extra_vars_item.value | string | length) > 0 and (extra_vars_item.value | string) is not match('None')) %}
         - {{ '"{%- raw -%}' }}{{ (current_list_item | regex_replace("\n", "\\\\n") | regex_replace('"', '\\"')) | regex_replace('\\\\(?!n|")', '\\\\\\\\') }}{{ '{%- endraw -%}"' }}
-{%       endfor %}
+{%         endfor %}
+{%       endif %}
 {%     else %}
       {{ extra_vars_item.key }}: {{ '"{%- raw -%}' }}{{ (extra_vars_item.value | regex_replace("\n", "\\\\n") | regex_replace('"', '\\"')) | regex_replace('\\\\(?!n|")', '\\\\\\\\') }}{{ '{%- endraw -%}"' }}
 {%     endif %}
 {%   endfor %}
-{% elif __workflow_extra_vars is string and (__workflow_extra_vars | length > 0) %}
+{% elif __workflow_extra_vars is string and (__workflow_extra_vars | length > 0) and (__workflow_extra_vars | trim) != '---' %}
 {# Comment-only (or otherwise non-mapping) YAML: keep original text; from_yaml is None and must not hit dict2items #}
     extra_vars: {{ '"{%- raw -%}' }}{{ (__workflow_extra_vars | regex_replace("\n", "\\\\n") | regex_replace('"', '\\"')) | regex_replace('\\\\(?!n|")', '\\\\\\\\') }}{{ '{%- endraw -%}"' }}
 {% else %}
@@ -222,7 +260,12 @@ controller_workflows:
 {%             set current_content = survey_item_content.key + ': "{%- raw -%}' + (survey_item_content.value | regex_replace("\n", "\\\\n") | regex_replace('"', '\\"')) | regex_replace('\\\\(?!n|")', '\\\\\\\\') + '{%- endraw -%}"' %}
 {%           endif %}
 {%         elif survey_item_content.key is not match('choices') %}
-{%           set current_content = survey_item_content.key + ': ' + survey_item_content.value | string %}
+{%           if survey_item_content.value is number or survey_item_content.value is boolean %}
+{%             set current_content = survey_item_content.key + ': ' + survey_item_content.value | string | lower %}
+{%           else %}
+{# Quote scalars so values with [ ] or leading - remain valid YAML (#420) #}
+{%             set current_content = survey_item_content.key + ': "' + (survey_item_content.value | string | replace('\\', '\\\\') | replace('"', '\\"')) + '"' %}
+{%           endif %}
 {%         endif %}
 {%         if _var.first_survey_item %}
 {%           set _var.first_survey_item = false %}
@@ -232,8 +275,9 @@ controller_workflows:
           {{ current_content | replace("$encrypted$", "\'\'") }}
 {%           else %}
 {%             if survey_item_content.key is match('choices') and survey_item_content.value[0] is defined %}
+{%               set __choices = (survey_item_content.value.split('\n') if survey_item_content.value is string else survey_item_content.value) %}
           {{ survey_item_content.key }}:
-{%               for choice in survey_item_content.value if ((survey_item_content.value | string | length) > 0 and (survey_item_content.value | string) is not match('None')) %}
+{%               for choice in __choices if ((choice | string | length) > 0 and (choice | string) is not match('None')) %}
 {%                 if choice is number %}
             - {{ choice }}
 {%                 else %}

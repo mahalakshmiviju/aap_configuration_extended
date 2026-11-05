@@ -2,6 +2,9 @@
 *.pem
 *.key
 .pre-commit-cache/
+.tmp-*/
+.tox/
+**/.pytest_cache/
 .venv/
 ansible_collections
 *.tar.gz
@@ -9,6 +12,7 @@ ansible_collections
 id_rsa*
 test
 tests/output
+tests/.cache
 .vscode
 ansible.cfg
 vault-aap-controller.yaml
@@ -16,3 +20,4 @@ vault-aap-controller.yaml
 .vault-password
 sample_25
 importer_result.json
+mcp.json

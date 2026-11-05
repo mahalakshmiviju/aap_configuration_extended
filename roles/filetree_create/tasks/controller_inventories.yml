@@ -2,7 +2,7 @@
 - name: "Get the inventories from the API"
   ansible.builtin.set_fact:
     inventory_lookvar: "{{ query('ansible.platform.gateway_api', 'api/controller/v2/inventories/',
-                                 query_params=(query_params | combine({'organization': organization_id} if organization_id is defined and inventory_name is not defined and inventory_id is not defined else {},
+                                 query_params=(query_params | combine({'organization': controller_organization_id} if controller_organization_id is defined and inventory_name is not defined and inventory_id is not defined else {},
                                    {'name': inventory_name} if inventory_name is defined else {},
                                    {'id': inventory_id} if inventory_id is defined and inventory_name is not defined else {})),
                                  host=aap_hostname, oauth_token=__filetree_create_oauth_token, verify_ssl=aap_validate_certs,
@@ -100,7 +100,7 @@
     inventory_sources_output_path: "{{ (output_path + '/' + inventory_organization | regex_replace('/', '_') + '/' + filetree_create_controller_inventory_sources + '/' + inventory_name | regex_replace('/', '_'))
                                       if (flatten_output is not defined or (flatten_output | bool) == false)
                                       else
-                                        output_path + '/inventory_sources.yaml' }}"
+                                        output_path + '/controller_inventory_sources.yaml' }}"
     current_inventory_sources_asset_value: "{{ query('ansible.platform.gateway_api', current_inventory_sources.related.inventory_sources,
                                                     host=aap_hostname, oauth_token=__filetree_create_oauth_token, verify_ssl=aap_validate_certs,
                                                     return_all=true, max_objects=query_controller_api_max_objects)

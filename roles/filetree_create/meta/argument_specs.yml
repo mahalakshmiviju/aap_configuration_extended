@@ -30,6 +30,39 @@ argument_specs:
         required: false
         type: bool
         description: Whether to create output files without objects id.
+      omit_instance_specific:
+        default: true
+        required: false
+        type: bool
+        description: When true, omit install/instance-specific controller settings such as LICENSE, INSTALL_UUID, and *_LAST_TS keys from CaC exports.
+      omit_instance_specific_keys:
+        default:
+          - LICENSE
+          - INSTALL_UUID
+        required: false
+        type: list
+        elements: str
+        description: Exact controller settings keys omitted when omit_instance_specific is true (in addition to keys matching *_LAST_TS).
+      flatten_output:
+        default: false
+        required: false
+        type: bool
+        description: Whether to flatten the output in single files per each object type instead of the normal exportation structure.
+      secrets_as_variables:
+        default: true
+        required: false
+        type: bool
+        description: Whether to export secrets as Ansible variable placeholders (prefix + object type + name + field).
+      secrets_as_variables_prefix:
+        default: vaulted
+        required: false
+        type: str
+        description: Prefix used when secrets_as_variables is true.
+      show_encrypted:
+        default: false
+        required: false
+        type: bool
+        description: When true, keep API $encrypted$ literals in export instead of vaulted variables or empty strings.
       export_inline_object_roles:
         default: false
         required: false

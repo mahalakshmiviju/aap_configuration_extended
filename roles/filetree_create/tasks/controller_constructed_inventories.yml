@@ -2,7 +2,7 @@
 - name: "Get the constructed inventories from the API"
   ansible.builtin.set_fact:
     constructed_inventory_lookvar: "{{ query('ansible.platform.gateway_api', 'api/controller/v2/constructed_inventories/',
-                                             query_params=(query_params | combine({'organization': organization_id})) if organization_id is defined else query_params,
+                                             query_params=(query_params | combine({'organization': controller_organization_id})) if controller_organization_id is defined else query_params,
                                              host=aap_hostname, oauth_token=__filetree_create_oauth_token, verify_ssl=aap_validate_certs,
                                              return_all=true, max_objects=query_controller_api_max_objects)
                                     }}"
@@ -94,10 +94,10 @@
   vars:
     inventory_organization: "{{ current_inventory_sources.summary_fields.organization.name | default(organization) }}"
     inventory_name: "{{ current_inventory_sources.name | regex_replace('/', '_') }}"
-    inventory_sources_output_path: "{{   (output_path + '/' + inventory_organization | regex_replace('/', '_') + '/{{ filetree_create_controller_inventories }}/' + inventory_name | regex_replace('/', '_'))
+    inventory_sources_output_path: "{{   (output_path + '/' + inventory_organization | regex_replace('/', '_') + '/' + filetree_create_controller_inventories + '/' + inventory_name | regex_replace('/', '_'))
                                       if (flatten_output is not defined or (flatten_output | bool) == false)
                                       else
-                                        output_path + '/inventory_sources.yaml' }}"
+                                        output_path + '/controller_inventory_sources.yaml' }}"
     current_inventory_sources_asset_value: "{{ query('ansible.platform.gateway_api', current_inventory_sources.related.inventory_sources,
                                                     host=aap_hostname, oauth_token=__filetree_create_oauth_token, verify_ssl=aap_validate_certs,
                                                     return_all=true, max_objects=query_controller_api_max_objects)

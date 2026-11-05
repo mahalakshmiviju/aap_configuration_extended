@@ -56,6 +56,15 @@ export_related_objects: false
 # on inventories, projects, job templates, workflow job templates, credentials,
 # and instance groups. Default false keeps the separate controller_roles export.
 export_inline_object_roles: false
+# Controller API resource_type values omitted from controller_roles export when
+# export_inline_object_roles is true (roles are embedded on the object YAML).
+inline_object_role_resource_types:
+  - inventory
+  - project
+  - job_template
+  - workflow_job_template
+  - credential
+  - instance_group
 skip_inventory_sources: false
 skip_inventory_hosts: false
 skip_inventory_groups: false
@@ -65,6 +74,8 @@ hub_configuration_filetree_create_secure_logging: "{{ aap_configuration_secure_l
 
 secrets_as_variables: true
 secrets_as_variables_prefix: "vaulted"
+show_encrypted: false
+flatten_output: false
 
 # Export defaults for controller settings omitted from settings/changed/ or filtered as
 # empty. Keys defined here are always exported (see controller_settings.j2).
@@ -112,6 +123,12 @@ env_fields_as_variables_map:
     - headers
 
 organization: 'ORGANIZATIONLESS'
+
+# Omit install/instance-specific controller settings from CaC exports (LICENSE, UUIDs, *_LAST_TS).
+omit_instance_specific: true
+omit_instance_specific_keys:
+  - LICENSE
+  - INSTALL_UUID
 
 input_tag:
   - all
